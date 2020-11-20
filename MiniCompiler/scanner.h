@@ -46,6 +46,7 @@ enum ERRORS
 {
 	GENERAL_ERROR, NOT_VALID_ID, ID_LENGTH_TOO_LONG
 };
+//The tokens are stored in a Trie data structure
 struct node
 {
 	TOKEN type;
@@ -455,7 +456,16 @@ bool scan_tokens(FILE* file)
 		}
 		else
 		{
-			insert_to_tokens_list(get_special_symbol_token(token));
+			if (*token == '{')
+			{
+				//skip the comment
+				while (*token != EOF && *token != '}')
+				{
+					token = read_word(file);
+				}
+				if (token == EOF) break;
+			}
+			else insert_to_tokens_list(get_special_symbol_token(token));
 		}
 		if (tokens.last->token == INVALID_TOKEN)
 		{
