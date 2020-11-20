@@ -10,7 +10,6 @@
 
 typedef enum bool bool;
 typedef enum TOKEN TOKEN;
-typedef enum ERRORS ERRORS;
 typedef struct node node;
 typedef struct token_list token_list;
 
@@ -42,10 +41,7 @@ enum TOKEN
 	EMPTY_TOKEN, INVALID_TOKEN, IDENTIFIER_TOKEN, NUMBER_TOKEN, READ_TOKEN, WRITE_TOKEN
 };
 char* token_name[NICE];
-enum ERRORS
-{
-	GENERAL_ERROR, NOT_VALID_ID, ID_LENGTH_TOO_LONG
-};
+
 //The tokens are stored in a Trie data structure
 struct node
 {

@@ -1,217 +1,269 @@
 #pragma once
 #include "scanner.h"
+#include "errors.h"
 
 token_list* current_token;
 
 //definitions
-void program_rule();
-void block_rule();
-void consts_rule();
-void vars_rule();
-void insts_rule();
-void inst_rule();
-void affect_rule();
-void if_rule();
-void while_rule();
-void write_rule();
-void read_rule();
-void cond_rule();
-void expr_rule();
-void term_rule();
-void fact_rule();
-void read_next();
-bool test_token(TOKEN token);
+//return true if okey, return false if an error occured
+bool program_rule();
+bool block_rule();
+bool consts_rule();
+bool vars_rule();
+bool insts_rule();
+bool inst_rule();
+bool affect_rule();
+bool if_rule();
+bool while_rule();
+bool write_rule();
+bool read_rule();
+bool cond_rule();
+bool expr_rule();
+bool term_rule();
+bool fact_rule();
+bool read_next();
+//return true if current token matches token
+bool test_token(TOKEN token, ERRORS error);
 
-
+ERRORS last_error;
 
 //function implementation
-bool test_token(TOKEN token)
+bool test_token(TOKEN token, ERRORS error)
 {
 	if (current_token->token == token)
 	{
 		read_next();
 		return true;
 	}
-	//ERROR
-
+	last_error = error;
 	return false;
 }
-void read_next()
+bool read_next()
 {
 	current_token = current_token->next;
 }
-void start_parser()
+bool start_parser()
 {
-	current_token = &tokens;
-	program_rule();
+	current_token = tokens.next;
+	return program_rule();
 }
 
-void program_rule()
+bool program_rule()
 {
-	test_token(PROGRAM_TOKEN);
-	test_token(IDENTIFIER_TOKEN);
-	test_token(SEMICOLON_TOKEN);
+	if (!test_token(PROGRAM_TOKEN, ERR_PROGRAM) ||
+		!test_token(IDENTIFIER_TOKEN, ERR_ID) ||
+		!test_token(SEMICOLON_TOKEN, ERR_SEMICOLON) ||
 
-	block_rule();
-	
-	test_token(PERIOD_TOKEN);
-}
+		!block_rule() ||
 
-void block_rule()
-{
-	consts_rule();
-	vars_rule();
-	insts_rule();
-}
-
-void consts_rule()
-{
-	if (test_token(CONST_TOKEN))
+		!test_token(PERIOD_TOKEN, ERR_PERIOD))
 	{
-		while (test_token(IDENTIFIER_TOKEN))
+		return false;
+	}
+	return true;
+}
+
+bool block_rule()
+{
+	if (!consts_rule() ||
+		!vars_rule() ||
+		!insts_rule() )
+	{
+		return false;
+	}
+	return true;
+}
+
+bool consts_rule()
+{
+	if (test_token(CONST_TOKEN, ERR_COMMA))
+	{
+		if (!test_token(IDENTIFIER_TOKEN, ERR_ID) ||
+			!test_token(EQUAL_TOKEN, ERR_EQUAL) ||
+			!test_token(NUMBER_TOKEN, ERR_NUM) ||
+			!test_token(SEMICOLON_TOKEN, ERR_SEMICOLON))
 		{
-			test_token(EQUAL_TOKEN);
-			test_token(NUMBER_TOKEN);
-			test_token(SEMICOLON_TOKEN);
+			return false;
+		}
+
+		while (test_token(IDENTIFIER_TOKEN, ERR_ID))
+		{
+			if (!test_token(EQUAL_TOKEN, ERR_ID) ||
+				!test_token(NUMBER_TOKEN, ERR_NUM) ||
+				!test_token(SEMICOLON_TOKEN, ERR_SEMICOLON))
+			{
+				return false;
+			}
 		}
 	}
+	return true;
 }
 
-void vars_rule()
+bool vars_rule()
 {
-	if (test_token(VAR_TOKEN))
+	if (test_token(VAR_TOKEN, ERR_VAR))
 	{
-		test_token(IDENTIFIER_TOKEN);
-		while (test_token(COMMA_TOKEN))
+		if (!test_token(IDENTIFIER_TOKEN, ERR_ID))
+			return false;
+
+		while (test_token(COMMA_TOKEN, ERR_COMMA))
 		{
-			test_token(IDENTIFIER_TOKEN);
+			if (!test_token(IDENTIFIER_TOKEN, ERR_ID))
+			{
+				return false;
+			}
 		}
-		test_token(SEMICOLON_TOKEN);
+		if (!test_token(SEMICOLON_TOKEN, ERR_SEMICOLON)) return false;
 	}
+	return true;
 }
 
-void insts_rule()
+bool insts_rule()
 {
-	test_token(BEGIN_TOKEN);
-	inst_rule();
-	while (test_token(SEMICOLON_TOKEN))
+	if (!test_token(BEGIN_TOKEN, ERR_BEGIN) ||
+		!inst_rule())
 	{
-		inst_rule();
+		return false;
 	}
-	test_token(END_TOKEN);
+	while (test_token(SEMICOLON_TOKEN, ERR_SEMICOLON))
+	{
+		if (!inst_rule()) return false;
+	}
+	if (!test_token(END_TOKEN, ERR_END)) return false;
 }
 
-void inst_rule()
+bool inst_rule()
 {
 	switch (current_token->token)
 	{
 	case BEGIN_TOKEN:
-		insts_rule();
-		break;
+		return insts_rule();
 	case IF_TOKEN:
-		if_rule();
-		break;
+		return if_rule();
 	case WHILE_TOKEN:
-		while_rule();
-		break;
+		return while_rule();
 	case READ_TOKEN:
-		read_rule();
-		break;
+		return read_rule();
 	case WRITE_TOKEN:
-		write_rule();
-		break;
+		return write_rule();
 	case IDENTIFIER_TOKEN:
-		affect_rule();
-		break;
-	default:
-		break;
+		return affect_rule();
 	}
+	return true;
 }
-void if_rule()
+bool if_rule()
 {
-	test_token(IF_TOKEN);
-	cond_rule();
-	test_token(THEN_TOKEN);
-	inst_rule();
-
+	if (!test_token(IF_TOKEN, ERR_IF) ||
+		!cond_rule() ||
+		!test_token(THEN_TOKEN, ERR_THEN) ||
+		!inst_rule())
+	{
+		return false;
+	}
+	
 	//TODO : Add else rule
+	return true;
 }
 
-void while_rule()
+bool while_rule()
 {
-	test_token(WHILE_TOKEN);
-	cond_rule();
-	test_token(DO_TOKEN);
-	inst_rule();
-}
-
-void read_rule()
-{
-	test_token(READ_TOKEN);
-	test_token(LEFT_PARENTHESIS_TOKEN);
-	test_token(IDENTIFIER_TOKEN);
-	while (test_token(COMMA_TOKEN))
+	if (!test_token(WHILE_TOKEN, ERR_WHILE) ||
+		!cond_rule() ||
+		!test_token(DO_TOKEN,ERR_DO) ||
+		!inst_rule())
 	{
-		test_token(IDENTIFIER_TOKEN);
+		return false;
 	}
-	test_token(RIGHT_PARENTHESIS_TOKEN);
-}
-void write_rule()
-{
-	test_token(READ_TOKEN);
-	test_token(LEFT_PARENTHESIS_TOKEN);
-	expr_rule();
-	while (test_token(COMMA_TOKEN))
-	{
-		expr_rule();
-	}
-	test_token(RIGHT_PARENTHESIS_TOKEN);
-}
-void affect_rule()
-{
-	test_token(IDENTIFIER_TOKEN);
-	test_token(AFFECT_TOKEN);
-	expr_rule();
+	return true;
 }
 
-void cond_rule()
+bool read_rule()
+{
+	if (!test_token(READ_TOKEN, ERR_READ) ||
+		!test_token(LEFT_PARENTHESIS_TOKEN, ERR_LEFT_PARENT) ||
+		!test_token(IDENTIFIER_TOKEN, ERR_ID))
+	{
+		return false;
+	}
+	while (test_token(COMMA_TOKEN, ERR_COMMA))
+	{
+		if (!test_token(IDENTIFIER_TOKEN, ERR_ID)) return false;
+	}
+	return test_token(RIGHT_PARENTHESIS_TOKEN, ERR_RIGHT_PARENT);
+}
+bool write_rule()
+{
+	if (!test_token(WRITE_TOKEN, ERR_WRITE) ||
+		!test_token(LEFT_PARENTHESIS_TOKEN, ERR_LEFT_PARENT) ||
+		!expr_rule())
+	{
+		return false;
+	}
+	while (test_token(COMMA_TOKEN, ERR_COMMA))
+	{
+		if (!expr_rule()) return false;
+	}
+	return test_token(RIGHT_PARENTHESIS_TOKEN, ERR_RIGHT_PARENT);
+}
+bool affect_rule()
+{
+	if (!test_token(IDENTIFIER_TOKEN, ERR_ID) ||
+		!test_token(AFFECT_TOKEN, ERR_AFFECT) ||
+		!expr_rule())
+	{
+		return false;
+	}
+	return true;
+}
+
+bool cond_rule()
 {
 	expr_rule();
-	if (test_token(EQUAL_TOKEN) || test_token(DIFF_TOKEN) || test_token(LESS_TOKEN) || test_token(GREATER_TOKEN)
-		|| test_token(LESS_EQ_TOKEN) || test_token(GREATER_EQ_TOKEN))
+	if (test_token(EQUAL_TOKEN, ERR_EQUAL) || test_token(DIFF_TOKEN, ERR_DIFF) || test_token(LESS_TOKEN , ERR_LESS) || 
+		test_token(GREATER_TOKEN, ERR_GREATER) || test_token(LESS_EQ_TOKEN, ERR_LESS_EQ) || test_token(GREATER_EQ_TOKEN, ERR_GREATER_EQ))
 	{
-		expr_rule();
+		return expr_rule();
 	}
 	else
 	{
-		//ERROR
+		last_error = ERR_COMPARISON;
+		return false;
 	}
 }
 
-void expr_rule()
+bool expr_rule()
 {
-	term_rule();
-	if (test_token(PLUS_TOKEN) || test_token(MINUS_TOKEN))
+	if (!term_rule()) return false;
+	if (test_token(PLUS_TOKEN, ERR_PLUS) || test_token(MINUS_TOKEN, ERR_MINUS))
 	{
-		term_rule();
+		return term_rule();
 	}
+	return true;
 }
 
-void term_rule()
+bool term_rule()
 {
-	fact_rule();
-	if (test_token(MULT_TOKEN) || test_token(MULT_TOKEN))
+	if (!fact_rule()) return false;
+	if (test_token(MULT_TOKEN, ERR_MULT) || test_token(SLASH_TOKEN, ERR_DIV))
 	{
-		fact_rule();
+		return fact_rule();
 	}
+	return true;
 }
 
-void fact_rule()
+bool fact_rule()
 {
-	if (test_token(IDENTIFIER_TOKEN)) return;
-	if (test_token(NUMBER_TOKEN)) return;
+	if (test_token(IDENTIFIER_TOKEN, ERR_ID) ||
+		test_token(NUMBER_TOKEN, ERR_NUM))
+	{
+		return true;
+	}
 
-	test_token(LEFT_PARENTHESIS_TOKEN);
-	expr_rule();
-	test_token(RIGHT_PARENTHESIS_TOKEN);
+	if (!test_token(LEFT_PARENTHESIS_TOKEN, ERR_LEFT_PARENT) ||
+		!expr_rule() ||
+		!test_token(RIGHT_PARENTHESIS_TOKEN, ERR_RIGHT_PARENT))
+	{
+		return false;
+	}
+	return true;
 }

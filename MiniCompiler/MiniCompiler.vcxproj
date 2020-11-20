@@ -144,6 +144,8 @@
     <ClCompile Include="main.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="errors.h" />
+    <ClInclude Include="parser.h" />
     <ClInclude Include="scanner.h" />
   </ItemGroup>
   <ItemGroup>
